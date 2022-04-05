@@ -32,10 +32,20 @@ public class RincianSpp extends Fragment {
     }
 
     private void UILimiter() {
-        if (sessionManager.getUserDetail().get(SessionManager.TYPE).equals("siswa")) {
+        if (sessionManager.getUserDetail().get(SessionManager.TYPE).equals("petugas")) {
             binding.edit.setVisibility(View.GONE);
         } else {
             binding.edit.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void diagCetak() {
+        try {
+            binding.edit.setVisibility(View.GONE);
+            UtilsUI.exportToPNG(getContext(), binding.layout, binding.tahunSpp.getText().toString() + "_" + binding.title.getText().toString() + "_" + binding.idSpp.getText().toString());
+            UILimiter();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -45,45 +55,39 @@ public class RincianSpp extends Fragment {
         final NavController nav = Navigation.findNavController(view);
 
         binding.edit.setOnClickListener(v -> nav.navigate(R.id.action_rincianSpp_petugas_to_editSpp));
-        binding.cetak.setOnClickListener(v -> {
-            try {
-                binding.edit.setVisibility(View.GONE);
-                UtilsUI.exportToPNG(getActivity(), binding.layout, binding.tahunSpp.getText().toString() + "_" + binding.title.getText().toString() + "_" + binding.idSpp.getText().toString());
-                UILimiter();
-            } catch (IOException e) {
-                e.printStackTrace();
+        binding.cetak.setOnClickListener(v -> diagCetak());
+    }
+
+    private void getSharedModel() {
+        int orange = getResources().getColor(R.color.orange);
+        SppSharedModel sharedModel = new ViewModelProvider(requireActivity()).get(SppSharedModel.class);
+        sharedModel.getData().observe(getViewLifecycleOwner(), detailsItemSpp -> {
+            binding.title.setText("Angkatan " + detailsItemSpp.getAngkatan());
+            binding.tahunSpp.setText("Total SPP Tahun " + detailsItemSpp.getTahun());
+            binding.totalSpp.setText(Utils.formatRupiah(detailsItemSpp.getNominal()));
+            if (detailsItemSpp.getNominal() <= 400000) {
+                binding.cardView.setCardBackgroundColor(orange);
+                binding.totalSpp.setTextColor(orange);
+                binding.iconEdit.setImageTintList(ColorStateList.valueOf(orange));
             }
+            binding.idSpp.setText("SPP-" + detailsItemSpp.getIdSpp());
+            binding.angkatan.setText(String.valueOf(detailsItemSpp.getAngkatan()));
+            binding.tahun.setText(String.valueOf(detailsItemSpp.getTahun()));
+            binding.total.setText(Utils.formatRupiah(detailsItemSpp.getNominal()));
         });
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
         binding = Petugas3RincianSppBinding.inflate(inflater, container, false);
-        sessionManager = new SessionManager(getContext());
-        int orange = getResources().getColor(R.color.orange);
-        SppSharedModel sharedModel = new ViewModelProvider(requireActivity()).get(SppSharedModel.class);
 
+        sessionManager = new SessionManager(getActivity().getApplicationContext());
         UILimiter();
-
-        sharedModel.getData().observe(getViewLifecycleOwner(), detailsItemSpp -> {
-            binding.title.setText("Angkatan " + detailsItemSpp.getAngkatan());
-            binding.tahunSpp.setText("Total SPP Tahun " + detailsItemSpp.getTahun());
-            binding.totalSpp.setText(Utils.formatRupiah(detailsItemSpp.getNominal()));
-
-            if(detailsItemSpp.getNominal() <= 400000){
-                binding.cardView.setCardBackgroundColor(orange);
-                binding.totalSpp.setTextColor(orange);
-                binding.iconEdit.setImageTintList(ColorStateList.valueOf(orange));
-            }
-
-            binding.idSpp.setText(String.valueOf(detailsItemSpp.getIdSpp()));
-            binding.angkatan.setText(String.valueOf(detailsItemSpp.getAngkatan()));
-            binding.tahun.setText(String.valueOf(detailsItemSpp.getTahun()));
-            binding.total.setText(Utils.formatRupiah(detailsItemSpp.getNominal()));
-        });
-
+        getSharedModel();
+        UtilsUI.simpleAnimation(binding.cardView);
+        UtilsUI.simpleAnimation(binding.cardView2);
+        UtilsUI.simpleAnimation(binding.cetak);
         return binding.getRoot();
     }
 }

@@ -26,7 +26,7 @@ import java.io.IOException;
 public class RincianTransaksi extends Fragment {
 
     private Siswa3RincianTransaksiBinding binding;
-    private NavController nav;
+    private NavController controller;
     private SessionManager sessionManager;
 
     private String namaSiswa, idPembayaran;
@@ -43,21 +43,58 @@ public class RincianTransaksi extends Fragment {
         }
     }
 
+    private void diagCetak() {
+        try {
+            binding.edit.setVisibility(View.GONE);
+            UtilsUI.exportToPNG(getContext(), binding.layout, namaSiswa + "_" + binding.tglBayar.getText().toString() + "_" + idPembayaran);
+            UILimiter();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        nav = Navigation.findNavController(view);
+        controller = Navigation.findNavController(view);
 
-        binding.edit.setOnClickListener(v -> {
-            nav.navigate(R.id.action_rincianTransaksi_siswa_to_editStatus);
-        });
-        binding.cetak.setOnClickListener(v -> {
-            try {
-                binding.edit.setVisibility(View.GONE);
-                UtilsUI.exportToPNG(getActivity(), binding.layout, namaSiswa + "_" + binding.tglBayar.getText().toString() + "_" + idPembayaran);
-                UILimiter();
-            } catch (IOException e) {
-                e.printStackTrace();
+        binding.edit.setOnClickListener(v -> controller.navigate(R.id.action_rincianTransaksi_siswa_to_editStatus));
+        binding.cetak.setOnClickListener(v -> diagCetak());
+    }
+
+    private void getSharedModel() {
+        PembayaranSharedModel sharedModel = new ViewModelProvider(requireActivity()).get(PembayaranSharedModel.class);
+        sharedModel.getData().observe(getViewLifecycleOwner(), detailsItemPembayaran -> {
+            this.namaSiswa = detailsItemPembayaran.getSiswa().getNama();
+            this.idPembayaran = String.valueOf(detailsItemPembayaran.getIdPembayaran());
+            UILimiter();
+            if (detailsItemPembayaran.getSpp() != null && Utils.statusPembayaran(detailsItemPembayaran.getSpp().getNominal(), detailsItemPembayaran.getJumlahBayar())) {
+                binding.status.setImageResource(R.drawable.icon_warning);
+                binding.statusText.setText("Belum Lunas");
+                binding.statusText.setTextColor(getResources().getColor(R.color.orange));
+                binding.frameStatus.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.orange)));
+                binding.jumlah.setText(Utils.kurangBayar(detailsItemPembayaran.getSpp().getNominal(), detailsItemPembayaran.getJumlahBayar()));
+            } else {
+                binding.status.setImageResource(R.drawable.icon_checked);
+                binding.jumlah.setText(Utils.formatRupiah(detailsItemPembayaran.getJumlahBayar()));
+            }
+            binding.spp.setText(Utils.parseLongtoStringDate(Utils.parseServerStringtoLongDate(detailsItemPembayaran.getTahunSpp() + "•" + detailsItemPembayaran.getBulanSpp(), "yyyy•MM"), "yyyy • MMMM"));
+            if (detailsItemPembayaran.getTglBayar() == null) {
+                binding.tglBayar.setVisibility(View.GONE);
+            } else {
+                binding.tglBayar.setText(Utils.parseLongtoStringDate(Utils.parseServerStringtoLongDate(detailsItemPembayaran.getTglBayar(), "yyyy-MM-dd"), "dd MMMM yyyy"));
+            }
+            binding.siswa.setText(detailsItemPembayaran.getSiswa().getNama());
+            if(detailsItemPembayaran.getSpp() != null) {
+                binding.idSpp.setText("SPP-" + detailsItemPembayaran.getSpp().getIdSpp());
+                binding.angkatan.setText(String.valueOf(detailsItemPembayaran.getSpp().getAngkatan()));
+                binding.nominal.setText(Utils.formatRupiah(detailsItemPembayaran.getSpp().getNominal()));
+            }
+            binding.tahun.setText(String.valueOf(detailsItemPembayaran.getTahunSpp()));
+            if (detailsItemPembayaran.getPetugas() == null) {
+                binding.cardPetugas.setVisibility(View.GONE);
+            } else {
+                binding.petugas.setText(detailsItemPembayaran.getPetugas().getNamaPetugas());
             }
         });
     }
@@ -65,42 +102,11 @@ public class RincianTransaksi extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
         binding = Siswa3RincianTransaksiBinding.inflate(inflater, container, false);
-        sessionManager = new SessionManager(getContext());
 
-        PembayaranSharedModel sharedModel = new ViewModelProvider(requireActivity()).get(PembayaranSharedModel.class);
-
-        sharedModel.getData().observe(getViewLifecycleOwner(), detailsItemPembayaran -> {
-            this.namaSiswa = detailsItemPembayaran.getSiswa().getNama();
-            this.idPembayaran = String.valueOf(detailsItemPembayaran.getIdPembayaran());
-            UILimiter();
-            if (Utils.statusPembayaran(detailsItemPembayaran.getSpp().getNominal(), detailsItemPembayaran.getJumlahBayar())) {
-                binding.status.setImageResource(R.drawable.icon_warning);
-                binding.frameStatus.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.orange)));
-                binding.jumlah.setText(Utils.kurangBayar(detailsItemPembayaran.getSpp().getNominal(), detailsItemPembayaran.getJumlahBayar()));
-            } else {
-                binding.status.setImageResource(R.drawable.icon_checked);
-                binding.jumlah.setText(Utils.formatRupiah(detailsItemPembayaran.getJumlahBayar()));
-            }
-            binding.spp.setText(detailsItemPembayaran.getTahunSpp() + " • " + Utils.getMonth(detailsItemPembayaran.getBulanSpp()));
-            if (detailsItemPembayaran.getTglBayar() == null) {
-                binding.tglBayar.setVisibility(View.GONE);
-            } else {
-                binding.tglBayar.setText(Utils.formatDateStringToLocal(detailsItemPembayaran.getTglBayar()));
-            }
-            binding.siswa.setText(detailsItemPembayaran.getSiswa().getNama());
-            binding.idSpp.setText(String.valueOf(detailsItemPembayaran.getSpp().getIdSpp()));
-            binding.angkatan.setText(String.valueOf(detailsItemPembayaran.getSpp().getAngkatan()));
-            binding.tahun.setText(String.valueOf(detailsItemPembayaran.getTahunSpp()));
-            binding.nominal.setText(Utils.formatRupiah(detailsItemPembayaran.getSpp().getNominal()));
-            if (detailsItemPembayaran.getPetugas() == null) {
-                binding.cardPetugas.setVisibility(View.GONE);
-            } else {
-                binding.petugas.setText(detailsItemPembayaran.getPetugas().getNamaPetugas());
-            }
-        });
-
+        sessionManager = new SessionManager(getActivity().getApplicationContext());
+        getSharedModel();
         return binding.getRoot();
     }
+
 }
