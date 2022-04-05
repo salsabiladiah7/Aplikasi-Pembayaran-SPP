@@ -38,7 +38,7 @@
                 android:contentDescription="@string/illustration"
                 android:maxHeight="360dp"
                 android:scaleType="fitCenter"
-                android:src="@drawable/illust"
+                android:src="@drawable/saly3"
                 app:layout_constraintEnd_toEndOf="@+id/textView2"
                 app:layout_constraintHorizontal_bias="0.0"
                 app:layout_constraintStart_toStartOf="@+id/textView2"
